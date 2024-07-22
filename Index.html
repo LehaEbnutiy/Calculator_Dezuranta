@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Калькулятор Дежуранта</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            background-color: #ffffff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 600px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #00796b;
+            margin-bottom: 20px;
+        }
+        label {
+            font-weight: bold;
+            margin-top: 10px;
+            display: block;
+            color: #00796b;
+        }
+        select, input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #00796b;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            background-color: #00796b;
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #004d40;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 12px;
+            text-align: center;
+            font-size: 16px;
+            color: #333;
+        }
+        th {
+            background-color: #00796b;
+            color: #ffffff;
+        }
+        tbody tr:nth-child(odd) {
+            background-color: #e0f7fa;
+        }
+        .over-hours {
+            background-color: #ffcccb;
+        }
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+            select, input, button {
+                font-size: 14px;
+                padding: 10px;
+            }
+            th, td {
+                font-size: 14px;
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Калькулятор Дежуранта</h1>
+        <label for="workingDays">Количество рабочих дней в месяц:</label>
+        <input type="number" id="workingDays" value="22">
+        
+        <label for="employmentRate">Ставка:</label>
+        <select id="employmentRate">
+            <option value="1.0">1.0</option>
+            <option value="0.75">0.75</option>
+            <option value="0.5">0.5</option>
+            <option value="0.25">0.25</option>
+        </select>
+        
+        <button onclick="calculateShifts()">Рассчитать дежурства</button>
+        
+        <table id="resultTable">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Суточные дежурства</th>
+                    <th>Ночные дежурства</th>
+                    <th>Использованные часы (Норма: <span id="normHours"></span>)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Результаты будут вставлены сюда -->
+            </tbody>
+        </table>
+    </div>
+    
+    <script>
+        function calculateShifts() {
+            const workingDays = document.getElementById('workingDays').value;
+            const employmentRate = document.getElementById('employmentRate').value;
+            const totalHours = workingDays * 7.2 * employmentRate;
+            const dayShiftHours = 24;
+            const nightShiftHours = 16.8;
+            const resultTable = document.getElementById('resultTable').getElementsByTagName('tbody')[0];
+            const normHoursSpan = document.getElementById('normHours');
+            
+            // Очистка предыдущих результатов
+            resultTable.innerHTML = '';
+            
+            // Установка нормы часов
+            normHoursSpan.innerHTML = totalHours.toFixed(1);
+            
+            const lowerThreshold = totalHours - 10; // Граница на 10 часов меньше
+            const upperThreshold = totalHours + 5; // Граница на 5 часов больше
+            
+            let combinations = [];
+            
+            for (let dayShifts = 0; dayShifts <= Math.floor(totalHours / dayShiftHours); dayShifts++) {
+                for (let nightShifts = 0; nightShifts <= Math.floor(totalHours / nightShiftHours); nightShifts++) {
+                    let hoursUsed = dayShifts * dayShiftHours + nightShifts * nightShiftHours;
+                    if (hoursUsed >= lowerThreshold && hoursUsed <= upperThreshold) {
+                        combinations.push({ dayShifts, nightShifts, hoursUsed });
+                    }
+                }
+            }
+            
+            // Сортируем комбинации по количеству использованных часов, начиная с максимального
+            combinations.sort((a, b) => b.hoursUsed - a.hoursUsed);
+            
+            // Отображаем комбинации
+            let index = 1;
+            for (let combo of combinations) {
+                let row = resultTable.insertRow();
+                let cell0 = row.insertCell(0);
+                let cell1 = row.insertCell(1);
+                let cell2 = row.insertCell(2);
+                let cell3 = row.insertCell(3);
+                cell0.innerHTML = index++;
+                cell1.innerHTML = combo.dayShifts;
+                cell2.innerHTML = combo.nightShifts;
+                cell3.innerHTML = combo.hoursUsed.toFixed(1) + (combo.hoursUsed > totalHours ? ` (Переработка: ${(combo.hoursUsed - totalHours).toFixed(1)} ч)` : '');
+                if (combo.hoursUsed > totalHours) {
+                    row.style.backgroundColor = '#ffcccb';
+                }
+            }
+        }
+    </script>
+</body>
+</html>
